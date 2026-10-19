@@ -1,5 +1,6 @@
 # Build output
 out/
+dist/
 
 # Java class files
 *.class
@@ -10,6 +11,9 @@ out/
 # IDEs
 .idea/
 *.iml
+
+# Icon build folder
+*.iconset/
 
 # Logs
 *.log
