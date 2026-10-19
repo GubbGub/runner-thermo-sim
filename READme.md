@@ -12,6 +12,6 @@ A modular Java application built to simulate and analyze the mechanical work (Jo
 ## 🚀 How to Run
 Ensure you have Java JDK 8 or higher installed. Compile and run from the root directory:
 ```bash
-javac src/*.java
-java -cp src Main
+javac -d out src/*.java
+java -cp out Main
 ```
