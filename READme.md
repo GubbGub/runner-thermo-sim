@@ -97,6 +97,8 @@ Every constant lives in [`PhysicsConstants.java`](src/runnersim/physics/PhysicsC
 
 Type in your height, weight and a run. If you have a watch, add your cadence, vertical oscillation and lap splits for better numbers. Anything you leave out is estimated and labeled that way.
 
+**Built to teach.** Every physics term has a small **?** beside it. Click it to see what the term means in plain English, along with its formula. In the terminal version, type a term like `froude` after your results.
+
 **Run it from source** (Java 17 or newer)
 
 ```bash
@@ -119,6 +121,8 @@ This packages `Runner Thermo.app` and installs it in `/Applications`.
 
 - [x] **Two models.** Lab measurements and Newton, side by side.
 - [x] **Two interfaces.** A terminal version and a Mac app on one engine.
+- [x] **Explanations.** A ? on every physics term, from cadence to the Froude number.
+- [ ] **Lab comparison.** Enter numbers measured in class and see how close the estimates come.
 - [ ] **Watch files.** Import a run from GPX or FIT instead of typing splits.
 - [ ] **Hills.** Add the work of climbing, $mgh$.
 - [ ] **Wind.** Add air resistance, $\tfrac{1}{2}\rho C_d A v^2$.
@@ -132,6 +136,7 @@ This packages `Runner Thermo.app` and installs it in `/Applications`.
 |:--|:--|
 | `src/runnersim/model/` | What a runner and a run are |
 | `src/runnersim/physics/` | The engine: both work models, stride, and the report |
+| `src/runnersim/learn/` | Plain-language explanations behind every ? |
 | `src/runnersim/cli/` | The terminal version |
 | `src/runnersim/gui/` | The Mac app |
 | `test/` | Physics tests |

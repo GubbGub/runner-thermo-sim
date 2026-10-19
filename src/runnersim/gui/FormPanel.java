@@ -15,6 +15,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
+import runnersim.learn.Term;
 import runnersim.model.Run;
 import runnersim.model.Runner;
 import runnersim.physics.Units;
@@ -61,7 +62,7 @@ final class FormPanel extends Ui.Card {
         col.add(Box.createVerticalStrut(20));
         col.add(Ui.eyebrow(t, "From your watch · optional"));
         col.add(Box.createVerticalStrut(8));
-        col.add(pair(Ui.labeled(t, "Cadence", "spm", cadence), Ui.labeled(t, "Bounce", "cm", oscillation)));
+        col.add(pair(Ui.labeled(t, "Cadence", "spm", cadence, Term.CADENCE), Ui.labeled(t, "Bounce", "cm", oscillation, Term.VERTICAL_OSCILLATION)));
         col.add(Box.createVerticalStrut(10));
         col.add(Ui.labeled(t, "Split length", "m", splitLength));
         col.add(Box.createVerticalStrut(10));

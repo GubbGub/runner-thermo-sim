@@ -22,7 +22,11 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.JPopupMenu;
+import javax.swing.JTextArea;
 import javax.swing.border.AbstractBorder;
+
+import runnersim.learn.Term;
 
 /**
  * Small, reusable building blocks so every screen is put together from the same parts.
@@ -118,13 +122,17 @@ final class Ui {
 
     /** A labeled input: small gray label above, field below, optional hint to the right of the label. */
     static JPanel labeled(Theme t, String label, String hint, JComponent input) {
+        return labeled(t, label, hint, input, null);
+    }
+
+    static JPanel labeled(Theme t, String label, String hint, JComponent input, Term term) {
         JPanel p = column();
         JPanel top = new JPanel(new BorderLayout());
         top.setOpaque(false);
-        top.add(label(label, t.sans(Font.PLAIN, 12f), t.muted), BorderLayout.WEST);
+        top.add(withHelp(t, label(label, t.sans(Font.PLAIN, 12f), t.muted), term), BorderLayout.WEST);
         if (!hint.isEmpty()) top.add(label(hint, t.sans(Font.PLAIN, 11f), t.faint), BorderLayout.EAST);
         top.setAlignmentX(Component.LEFT_ALIGNMENT);
-        top.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
+        top.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
         input.setAlignmentX(Component.LEFT_ALIGNMENT);
         p.add(top);
         p.add(Box.createVerticalStrut(4));
@@ -165,10 +173,15 @@ final class Ui {
 
     /** One line of a detail list: label on the left, value and an optional note on the right. */
     static JPanel row(Theme t, String label, String value, String note) {
+        return row(t, label, value, note, null);
+    }
+
+    /** A detail row whose label has a "?" button explaining the term. */
+    static JPanel row(Theme t, String label, String value, String note, Term term) {
         JPanel r = new JPanel(new BorderLayout(12, 0));
         r.setOpaque(false);
         r.setBorder(BorderFactory.createEmptyBorder(6, 0, 6, 0));
-        r.add(label(label, t.sans(Font.PLAIN, 13f), t.muted), BorderLayout.WEST);
+        r.add(withHelp(t, label(label, t.sans(Font.PLAIN, 13f), t.muted), term), BorderLayout.WEST);
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         right.setOpaque(false);
         if (!note.isEmpty()) right.add(label(note, t.sans(Font.PLAIN, 12f), t.faint));
@@ -195,5 +208,94 @@ final class Ui {
         p.setOpaque(false);
         p.setAlignmentX(Component.LEFT_ALIGNMENT);
         return p;
+    }
+    /** Puts a "?" button after any label. With no term, returns the label unchanged. */
+    static JComponent withHelp(Theme t, JComponent label, Term term) {
+        if (term == null) return label;
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.X_AXIS));
+        p.setOpaque(false);
+        p.add(label);
+        p.add(Box.createHorizontalStrut(6));
+        p.add(helpButton(t, term));
+        p.setAlignmentX(Component.LEFT_ALIGNMENT);
+        p.setMaximumSize(new Dimension(Integer.MAX_VALUE, p.getPreferredSize().height));
+        return p;
+    }
+
+    /** A small circled question mark. Clicking it (or pressing Space) opens a card explaining the term. */
+    static JButton helpButton(Theme t, Term term) {
+        JButton b = new JButton() {
+            private static final long serialVersionUID = 1L;
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                boolean hot = getModel().isRollover() || isFocusOwner();
+                int d = Math.min(getWidth(), getHeight()) - 2;
+                g2.setColor(hot ? t.accent : t.faint);
+                g2.setStroke(new BasicStroke(1.3f));
+                g2.drawOval(1, 1, d - 1, d - 1);
+                g2.setFont(t.sans(Font.BOLD, 10f));
+                java.awt.FontMetrics fm = g2.getFontMetrics();
+                String q = "?";
+                g2.drawString(q, 1 + (d - fm.stringWidth(q)) / 2f, 1 + (d + fm.getAscent() - fm.getDescent()) / 2f);
+                g2.dispose();
+            }
+        };
+        Dimension size = new Dimension(16, 16);
+        b.setPreferredSize(size);
+        b.setMinimumSize(size);
+        b.setMaximumSize(size);
+        b.setContentAreaFilled(false);
+        b.setBorderPainted(false);
+        b.setFocusPainted(false);
+        b.setOpaque(false);
+        b.setRolloverEnabled(true);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setToolTipText("What is " + term.title().toLowerCase() + "?");
+        b.getAccessibleContext().setAccessibleName("Explain " + term.title());
+        b.addActionListener(e -> explain(t, term).show(b, -8, b.getHeight() + 6));
+        return b;
+    }
+
+    /** The pop-up card: title, plain-language explanation, then the formula. */
+    private static JPopupMenu explain(Theme t, Term term) {
+        JPanel body = column();
+
+        body.add(label(term.title(), t.serif(Font.PLAIN, 18f), t.fg));
+        body.add(Box.createVerticalStrut(6));
+
+        JTextArea text = new JTextArea(term.explanation());
+        text.setLineWrap(true);
+        text.setWrapStyleWord(true);
+        text.setEditable(false);
+        text.setFocusable(false);
+        text.setOpaque(false);
+        text.setFont(t.sans(Font.PLAIN, 13f));
+        text.setForeground(t.muted);
+        text.setBorder(BorderFactory.createEmptyBorder());
+        text.setSize(new Dimension(300, Short.MAX_VALUE));
+        text.setPreferredSize(new Dimension(300, text.getPreferredSize().height));
+        text.setAlignmentX(Component.LEFT_ALIGNMENT);
+        body.add(text);
+
+        body.add(Box.createVerticalStrut(10));
+        Card formula = new Card(new BorderLayout(), t.field, 8, 8);
+        formula.add(label(term.formula(), t.serif(Font.ITALIC, 15f), t.fg), BorderLayout.WEST);
+        formula.setAlignmentX(Component.LEFT_ALIGNMENT);
+        body.add(formula);
+
+        JPanel wrap = new JPanel(new BorderLayout());
+        wrap.setBackground(t.card);
+        wrap.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
+        wrap.add(body, BorderLayout.CENTER);
+
+        JPopupMenu popup = new JPopupMenu();
+        popup.setBorder(BorderFactory.createLineBorder(t.separator));
+        popup.setBackground(t.card);
+        popup.add(wrap);
+        return popup;
     }
 }

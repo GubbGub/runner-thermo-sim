@@ -46,6 +46,11 @@ final class Prompt {
         }
     }
 
+    /** Free text that may be empty. */
+    String optionalText(String label) {
+        return ask(label, "");
+    }
+
     double number(String label, String unit, double min, double max) {
         while (true) {
             String s = ask(label, "(" + unit + ")");

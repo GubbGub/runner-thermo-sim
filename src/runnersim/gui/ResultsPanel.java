@@ -11,6 +11,7 @@ import javax.swing.Box;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import runnersim.learn.Term;
 import runnersim.physics.EnergyBreakdown;
 import runnersim.physics.Gait;
 import runnersim.physics.RunReport;
@@ -62,35 +63,35 @@ final class ResultsPanel extends JPanel {
 
         JPanel tiles = new JPanel(new GridLayout(2, 2, 12, 12));
         tiles.setOpaque(false);
-        tiles.add(tile("Mechanical work", Units.formatEnergy(main.mechanicalJ()), "what actually moved you"));
-        tiles.add(tile("Energy burned", f("%.0f kcal", main.metabolicKcal()), Units.formatEnergy(main.metabolicJ()) + " metabolic"));
+        tiles.add(tile("Mechanical work", Units.formatEnergy(main.mechanicalJ()), "what actually moved you", Term.MECHANICAL_WORK));
+        tiles.add(tile("Energy burned", f("%.0f kcal", main.metabolicKcal()), Units.formatEnergy(main.metabolicJ()) + " metabolic", Term.ENERGY_BURNED));
         tiles.add(tile("Released as heat", Units.formatEnergy(main.heatJ()),
-                f("+%.1f °C if none escaped", r.temperatureRiseIfNoCoolingK(main))));
+                f("+%.1f °C if none escaped", r.temperatureRiseIfNoCoolingK(main)), Term.HEAT));
         tiles.add(tile("Mechanical power", f("%.0f W", r.mechanicalPowerW(main)),
-                f("%.2f W/kg", r.mechanicalPowerW(main) / r.runner().getMassKg())));
+                f("%.2f W/kg", r.mechanicalPowerW(main) / r.runner().getMassKg()), Term.POWER));
         add(left(tiles));
         add(Box.createVerticalStrut(16));
 
         JPanel stride = Ui.column();
         stride.add(Ui.eyebrow(t, "Stride"));
         stride.add(Box.createVerticalStrut(4));
-        stride.add(Ui.row(t, "Cadence", f("%.0f steps/min", g.cadenceSpm()), g.cadenceEstimated() ? "estimated" : "watch"));
+        stride.add(Ui.row(t, "Cadence", f("%.0f steps/min", g.cadenceSpm()), g.cadenceEstimated() ? "estimated" : "watch", Term.CADENCE));
         stride.add(Ui.divider(t));
-        stride.add(Ui.row(t, "Step length", f("%.2f m", g.stepLengthM()), ""));
+        stride.add(Ui.row(t, "Step length", f("%.2f m", g.stepLengthM()), "", Term.STEP_LENGTH));
         stride.add(Ui.divider(t));
-        stride.add(Ui.row(t, "Vertical oscillation", f("%.1f cm", g.verticalOscillationM() * 100), g.oscillationEstimated() ? "estimated" : "watch"));
+        stride.add(Ui.row(t, "Vertical oscillation", f("%.1f cm", g.verticalOscillationM() * 100), g.oscillationEstimated() ? "estimated" : "watch", Term.VERTICAL_OSCILLATION));
         stride.add(Ui.divider(t));
-        stride.add(Ui.row(t, "Froude number", f("%.2f", g.froudeNumber()), g.froudeNumber() > 0.5 ? "running gait" : "walking range"));
+        stride.add(Ui.row(t, "Froude number", f("%.2f", g.froudeNumber()), g.froudeNumber() > 0.5 ? "running gait" : "walking range", Term.FROUDE_NUMBER));
         add(card(stride));
         add(Box.createVerticalStrut(12));
 
         JPanel models = Ui.column();
-        models.add(Ui.eyebrow(t, "Two ways to estimate the work"));
+        models.add(Ui.withHelp(t, Ui.eyebrow(t, "Two ways to estimate the work"), Term.MUSCLE_EFFICIENCY));
         models.add(Box.createVerticalStrut(4));
         for (int i = 0; i < r.models().size(); i++) {
             EnergyBreakdown b = r.models().get(i);
             if (i > 0) models.add(Ui.divider(t));
-            models.add(Ui.row(t, b.modelName(), Units.formatEnergy(b.mechanicalJ()), f("%.0f W", r.mechanicalPowerW(b))));
+            models.add(Ui.row(t, b.modelName(), Units.formatEnergy(b.mechanicalJ()), f("%.0f W", r.mechanicalPowerW(b)), Term.find(b.modelName())));
             if (b.parts().size() > 1) {
                 for (EnergyBreakdown.Part p : b.parts()) {
                     JLabel l = Ui.label("   " + p.label() + "  ·  " + Units.formatEnergy(p.joules()), t.sans(Font.PLAIN, 12f), t.faint);
@@ -111,7 +112,7 @@ final class ResultsPanel extends JPanel {
         if (!r.splits().isEmpty()) {
             add(Box.createVerticalStrut(12));
             JPanel splits = Ui.column();
-            splits.add(Ui.eyebrow(t, "Splits"));
+            splits.add(Ui.withHelp(t, Ui.eyebrow(t, "Splits and kinetic energy"), Term.KINETIC_ENERGY));
             splits.add(Box.createVerticalStrut(4));
             for (int i = 0; i < r.splits().size(); i++) {
                 RunReport.SplitResult s = r.splits().get(i);
@@ -128,9 +129,9 @@ final class ResultsPanel extends JPanel {
         repaint();
     }
 
-    private JPanel tile(String label, String value, String note) {
+    private JPanel tile(String label, String value, String note, Term term) {
         JPanel c = Ui.column();
-        c.add(Ui.label(label, t.sans(Font.PLAIN, 12f), t.muted));
+        c.add(Ui.withHelp(t, Ui.label(label, t.sans(Font.PLAIN, 12f), t.muted), term));
         c.add(Box.createVerticalStrut(4));
         c.add(Ui.label(value, t.sans(Font.BOLD, 26f), t.fg));
         c.add(Box.createVerticalStrut(2));
