@@ -6,27 +6,87 @@
 </p>
 
 <p align="center">
-  <a href="#the-idea">The idea</a> &nbsp;·&nbsp;
+  <a href="#the-story">The story</a> &nbsp;·&nbsp;
+  <a href="#by-the-numbers">By the numbers</a> &nbsp;·&nbsp;
   <a href="#the-physics">The physics</a> &nbsp;·&nbsp;
-  <a href="#run-it">Run it</a> &nbsp;·&nbsp;
-  <a href="#how-its-built">How it's built</a>
+  <a href="#the-app">The app</a>
 </p>
 
 <br>
 
-## The idea
+## The story
 
-In AP Physics II we measured the mechanical work and power of runners from their mass and a timed run. I run, so I wanted to point the same physics at my own watch data and see where the energy actually goes.
+In AP Physics II we ran a lab on runners. We measured each runner's mass and timed a lap, then worked out how much mechanical work they did and how much power they put out.
 
-The short answer: most of it becomes heat. Muscles are only about 25% efficient, so for every joule that moves you forward, three more warm you up. Run a 5K and you release over a megajoule of heat, enough to raise your body temperature more than 4 °C if none of it escaped.
+I run, and I kept thinking about where all that energy actually goes. So I pointed the same physics at my own watch data.
 
-Runner Thermo turns that lab into a small Java application with a terminal version and a Mac app, both built on the same physics engine.
+The answer surprised me. Most of it never moves you at all. Muscles are only about 25 percent efficient, so for every joule that carries you forward, three more turn into heat. That's why you're soaked by the end of a hard 5K.
+
+Runner Thermo turns the lab into a small Java application. It has a terminal version and a Mac app, both built on the same physics engine.
 
 > *Coding reveals truth*  
 > *like the ancient gift of fire,*  
 > *nature found in text.*
 
 <br>
+
+## By the numbers
+
+A 70 kg runner finishing a 5K in 21:20:
+
+| | |
+|:--|:--|
+| **Energy burned** | 350 kcal (1.46 MJ) |
+| **Mechanical work** | 366 kJ, the part that actually moves you |
+| **Released as heat** | 1.10 MJ, three quarters of the total |
+| **If none escaped** | Body temperature would rise about 4.5 °C |
+| **Mechanical power** | 286 W, about 4 W per kilogram |
+| **Steps taken** | About 3,700 |
+
+<br>
+
+## The physics
+
+There are two honest ways to estimate the work in a run. The app calculates both, because the gap between them is the most interesting part.
+
+**From the lab.** Physiologists have measured that running on level ground costs about 1 kilocalorie per kilogram per kilometer, at almost any speed. Multiply by muscle efficiency and you get the mechanical work.
+
+**From Newton.** Treat the runner as a single mass. Every step lifts the body a few centimeters, which takes $mg\Delta h$. Every time you speed up, kinetic energy grows by $\tfrac{1}{2}m(v_2^2 - v_1^2)$. Add those up across the whole run.
+
+The Newton version explains only about half of what the lab measures. The rest goes to swinging your arms and legs and to braking a little on every footstrike, partly paid back by your Achilles tendons, which store energy and return it like springs.
+
+Whatever doesn't become work becomes heat. That's the first law of thermodynamics, and it's why the app can say how warm a run would make you if your body couldn't sweat.
+
+<details>
+<summary><b>The equations</b></summary>
+
+<br>
+
+**Cost of transport**
+
+$$E_{\text{metabolic}} = C \cdot m \cdot d, \qquad C \approx 4.18\ \text{J/(kg·m)}$$
+
+$$W = \eta \cdot E_{\text{metabolic}}, \qquad \eta \approx 0.25$$
+
+**Center of mass**
+
+$$W = N_{\text{steps}} \cdot mg\Delta h \;+\; \sum \tfrac{1}{2}m\left(v_i^2 - v_{i-1}^2\right)^{+}$$
+
+**Heat and temperature**
+
+$$Q = E_{\text{metabolic}} - W, \qquad \Delta T = \frac{Q}{m \, c_{\text{body}}}, \quad c_{\text{body}} \approx 3470\ \text{J/(kg·K)}$$
+
+**Stride**
+
+Step length is speed divided by cadence. The Froude number $Fr = v^2 / gL_{\text{leg}}$ compares speed with leg length; above about 0.5, people switch from walking to running.
+
+Every constant lives in [`PhysicsConstants.java`](src/runnersim/physics/PhysicsConstants.java), so each assumption is easy to find and question.
+
+</details>
+
+<br>
+
+## The app
 
 <p align="center">
   <picture>
@@ -35,85 +95,56 @@ Runner Thermo turns that lab into a small Java application with a terminal versi
   </picture>
 </p>
 
-<br>
+Type in your height, weight and a run. If you have a watch, add your cadence, vertical oscillation and lap splits for better numbers. Anything you leave out is estimated and labeled that way.
 
-## The physics
-
-The app estimates the work two independent ways and shows both, because the gap between them is the interesting part.
-
-**1. Cost of transport (top-down).** Exercise physiologists have measured that level running costs about 1 kcal per kilogram per kilometer, almost regardless of speed (Margaria et al., 1963).
-
-$$E_{\text{metabolic}} = C \cdot m \cdot d, \qquad C \approx 4.18\ \text{J/(kg·m)}$$
-
-$$W_{\text{mechanical}} = \eta \cdot E_{\text{metabolic}}, \qquad \eta \approx 0.25$$
-
-**2. Center of mass (bottom-up).** Treat the runner as a point mass and add up the work Newton would count: lifting the body on every step, and speeding up.
-
-$$W = \underbrace{N_{\text{steps}} \cdot mg\Delta h}_{\text{vertical lift}} + \underbrace{\sum \tfrac{1}{2}m\left(v_{i}^{2} - v_{i-1}^{2}\right)^{+}}_{\text{speeding up between splits}}$$
-
-With typical values, the center-of-mass model explains about half of the measured cost. The rest goes to swinging the arms and legs and to braking on every footstrike, partly offset by elastic energy the Achilles tendon stores and returns.
-
-**Thermodynamics.** By the first law, whatever metabolic energy doesn't become work becomes heat:
-
-$$Q = E_{\text{metabolic}} - W, \qquad \Delta T_{\text{no cooling}} = \frac{Q}{m \, c_{\text{body}}}, \quad c_{\text{body}} \approx 3470\ \text{J/(kg·K)}$$
-
-**Stride.** Step length comes from speed and cadence ($L = v / f$). The Froude number $Fr = v^2 / gL_{\text{leg}}$ compares speed to leg length; above about 0.5, people switch from walking to running.
-
-Every constant and assumption lives in [`PhysicsConstants.java`](src/runnersim/physics/PhysicsConstants.java), so each one is easy to find and question.
-
-<br>
-
-## Run it
-
-Needs Java 17 or newer (`java -version` to check).
+**Run it from source** (Java 17 or newer)
 
 ```bash
 ./build.sh test   # physics tests, checked against hand calculations
-./build.sh cli    # terminal version: type in your biometrics, run and splits
+./build.sh cli    # terminal version
 ./build.sh gui    # window version
-./build.sh app    # package Runner Thermo.app and install it in /Applications
 ```
 
-Have a watch? Enter your cadence, vertical oscillation and lap splits for better numbers. Anything you skip is estimated and labeled that way.
+**Build the app**
 
-<br>
-
-## How it's built
-
-```
-src/runnersim/
-├── App.java                     Entry point: window by default, --cli for the terminal
-├── model/                       What a run is
-│   ├── Runner.java              Mass, height, leg length
-│   ├── Run.java                 Distance, time, splits, watch metrics
-│   └── Split.java
-├── physics/                     The engine, shared by both interfaces
-│   ├── WorkModel.java           Interface: one physical model of work
-│   ├── CostOfTransportModel.java
-│   ├── CenterOfMassModel.java
-│   ├── Gait.java                Cadence, step length, Froude number
-│   ├── RunAnalyzer.java         Runs every model, builds the report
-│   ├── RunReport.java
-│   ├── EnergyBreakdown.java
-│   ├── PhysicsConstants.java
-│   └── Units.java
-├── cli/                         Terminal interface (Scanner)
-└── gui/                         Mac app interface (Swing)
-test/runnersim/PhysicsTests.java
+```bash
+./build.sh app
 ```
 
-The physics never knows which interface is calling it. Adding a new model, say one for running uphill, means writing one class that implements `WorkModel` and adding it to `RunAnalyzer`.
+This packages `Runner Thermo.app` and installs it in `/Applications`.
 
 <br>
 
 ## Roadmap
 
-- [x] Two work models with a side-by-side comparison
-- [x] Terminal and Mac app interfaces on one engine
-- [ ] Import runs from a GPX or FIT file instead of typing splits
-- [ ] Hills: add $mgh$ for elevation gain
-- [ ] Wind and air resistance: $\tfrac{1}{2}\rho C_d A v^2$
-- [ ] Compare my numbers with a treadmill test
+- [x] **Two models.** Lab measurements and Newton, side by side.
+- [x] **Two interfaces.** A terminal version and a Mac app on one engine.
+- [ ] **Watch files.** Import a run from GPX or FIT instead of typing splits.
+- [ ] **Hills.** Add the work of climbing, $mgh$.
+- [ ] **Wind.** Add air resistance, $\tfrac{1}{2}\rho C_d A v^2$.
+- [ ] **Reality check.** Compare my numbers with a treadmill test.
+
+<br>
+
+## Repository
+
+| Path | What it is |
+|:--|:--|
+| `src/runnersim/model/` | What a runner and a run are |
+| `src/runnersim/physics/` | The engine: both work models, stride, and the report |
+| `src/runnersim/cli/` | The terminal version |
+| `src/runnersim/gui/` | The Mac app |
+| `test/` | Physics tests |
+| `assets/` | App icon and README images |
+
+Each work model is one class that implements `WorkModel`, so adding a new one, like running uphill, doesn't touch anything else.
+
+<br>
+
+## Acknowledgments
+
+- My AP Physics II class, for the lab that started this
+- Rodolfo Margaria and colleagues, whose 1963 measurements of the energy cost of running still hold up
 
 <br>
 
