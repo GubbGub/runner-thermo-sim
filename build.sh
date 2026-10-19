@@ -29,19 +29,29 @@ case "${1:-}" in
     ;;
   app)
     compile
-    mkdir -p out/jar
-    jar --create --file out/jar/runner-thermo-sim.jar --main-class runnersim.App -C out/classes .
-    rm -rf dist
+    # Package in a temporary folder outside Desktop/iCloud. Files there pick up Finder
+    # metadata (extended attributes) that make macOS code signing fail.
+    STAGE="$(mktemp -d /tmp/runner-thermo.XXXXXX)"
+    mkdir -p "$STAGE/input"
+    jar --create --file "$STAGE/input/runner-thermo-sim.jar" --main-class runnersim.App -C out/classes .
+    cp -X assets/AppIcon.icns "$STAGE/AppIcon.icns"
+    xattr -cr "$STAGE"
     jpackage --type app-image \
       --name "Runner Thermo" \
-      --input out/jar \
+      --input "$STAGE/input" \
       --main-jar runner-thermo-sim.jar \
       --main-class runnersim.App \
-      --icon assets/AppIcon.icns \
+      --icon "$STAGE/AppIcon.icns" \
       --mac-package-identifier com.gubbgub.runnerthermo \
-      --dest dist
+      --dest "$STAGE/dist"
     rm -rf "/Applications/Runner Thermo.app"
-    cp -R "dist/Runner Thermo.app" /Applications/
+    ditto "$STAGE/dist/Runner Thermo.app" "/Applications/Runner Thermo.app"
+    # Re-sign the finished app as one unit (ad-hoc, no Apple developer account needed).
+    # Without this, macOS can call the app "damaged" and refuse to open it.
+    xattr -cr "/Applications/Runner Thermo.app"
+    codesign --force --deep --sign - "/Applications/Runner Thermo.app"
+    codesign --verify --deep --strict "/Applications/Runner Thermo.app"
+    rm -rf "$STAGE"
     echo "Installed to /Applications/Runner Thermo.app"
     ;;
   *)
