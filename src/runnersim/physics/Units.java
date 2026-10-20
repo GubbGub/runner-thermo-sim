@@ -53,14 +53,15 @@ public final class Units {
     public static double parseMassKg(String text) {
         String s = text == null ? "" : text.trim().toLowerCase(Locale.US);
         if (s.isEmpty()) throw new IllegalArgumentException("Mass is required.");
-        boolean pounds = s.endsWith("lb") || s.endsWith("lbs") || s.endsWith("pounds") || s.endsWith("pound");
-        String number = s.replaceAll("[a-z\\s]+$", "").trim();
-        try {
-            double v = Double.parseDouble(number);
-            return pounds ? v * PhysicsConstants.KG_PER_POUND : v;
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Mass should look like 72 or 158 lb.");
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("^(\\d+(?:\\.\\d+)?)\\s*(kg|kgs|kilos?|kilograms?|lb|lbs|pounds?)?$")
+                .matcher(s);
+        if (!m.matches()) {
+            throw new IllegalArgumentException("\"" + text.trim() + "\" isn't a weight the app understands.");
         }
+        double v = Double.parseDouble(m.group(1));
+        String unit = m.group(2);
+        return unit != null && (unit.startsWith("lb") || unit.startsWith("pound")) ? v * PhysicsConstants.KG_PER_POUND : v;
     }
 
     /**

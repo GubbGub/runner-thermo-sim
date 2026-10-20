@@ -61,6 +61,14 @@ final class Ui {
     }
 
     /** Rounded outline for text fields that turns accent-colored when focused. */
+    /** Client property that marks a field as holding a value that needs fixing (drawn with a red outline). */
+    static final String INVALID = "runnerThermo.invalid";
+
+    static void markInvalid(JComponent field, boolean invalid) {
+        field.putClientProperty(INVALID, invalid);
+        field.repaint();
+    }
+
     static final class FieldBorder extends AbstractBorder {
         private static final long serialVersionUID = 1L;
         private final transient Theme t;
@@ -72,8 +80,9 @@ final class Ui {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             boolean focused = c.hasFocus();
-            g2.setColor(focused ? t.accent : t.separator);
-            g2.setStroke(new BasicStroke(focused ? 2f : 1f));
+            boolean invalid = c instanceof JComponent jc && Boolean.TRUE.equals(jc.getClientProperty(INVALID));
+            g2.setColor(invalid ? t.error : focused ? t.accent : t.separator);
+            g2.setStroke(new BasicStroke(focused || invalid ? 2f : 1f));
             g2.drawRoundRect(x + 1, y + 1, w - 3, h - 3, 14, 14);
             g2.dispose();
         }
@@ -359,5 +368,73 @@ final class Ui {
         a.setPreferredSize(new Dimension(width, a.getPreferredSize().height));
         a.setAlignmentX(Component.LEFT_ALIGNMENT);
         return a;
+    }
+    /**
+     * A message box for problems with the input. It wraps to fit, so nothing is cut off:
+     * a short title, a plain explanation, and an example of what works.
+     */
+    static final class Callout extends JPanel {
+        private static final long serialVersionUID = 1L;
+        private final transient Theme t;
+        private final JLabel title;
+        private final JTextArea body;
+        private final JTextArea example;
+        private final int width;
+
+        Callout(Theme t, int width) {
+            this.t = t;
+            this.width = width;
+            setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+            setOpaque(false);
+            setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+            setAlignmentX(Component.LEFT_ALIGNMENT);
+            title = label(" ", t.sans(Font.BOLD, 13f), t.error);
+            title.setAlignmentX(Component.LEFT_ALIGNMENT);
+            body = paragraph(t, " ", t.fg, width - 28);
+            example = paragraph(t, " ", t.muted, width - 28);
+            add(title);
+            add(Box.createVerticalStrut(4));
+            add(body);
+            add(Box.createVerticalStrut(6));
+            add(example);
+            setVisible(false);
+        }
+
+        void show(String heading, String explanation, String exampleText) {
+            title.setText(heading);
+            setWrapped(body, explanation);
+            example.setVisible(exampleText != null && !exampleText.isEmpty());
+            if (example.isVisible()) setWrapped(example, "Example: " + exampleText);
+            setVisible(true);
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, getPreferredSize().height));
+            revalidate();
+            repaint();
+        }
+
+        void clear() {
+            setVisible(false);
+            revalidate();
+        }
+
+        private void setWrapped(JTextArea area, String text) {
+            area.setText(text);
+            area.setSize(new Dimension(width - 28, Short.MAX_VALUE));
+            area.setPreferredSize(null);
+            area.setPreferredSize(new Dimension(width - 28, area.getPreferredSize().height));
+            area.setMaximumSize(area.getPreferredSize());
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            java.awt.Color e = t.error;
+            g2.setColor(new java.awt.Color(e.getRed(), e.getGreen(), e.getBlue(), t.dark ? 40 : 22));
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+            g2.setColor(new java.awt.Color(e.getRed(), e.getGreen(), e.getBlue(), 90));
+            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 20, 20);
+            g2.dispose();
+            super.paintComponent(g);
+        }
     }
 }
