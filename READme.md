@@ -107,6 +107,14 @@ Weight works in kilograms or pounds (`158 lb`), height in centimeters or feet an
 
 **Built to teach.** Every physics term has a small **?** beside it. Click it to see what the term means in plain English, along with its formula. In the terminal version, type a term like `froude` after your results.
 
+**Download it**
+
+Get the latest version from the [Releases page](https://github.com/GubbGub/runner-thermo-sim/releases/latest). Nothing else needs to be installed, because each download includes its own Java.
+
+- **Windows:** download `Runner-Thermo-windows.zip`, unzip it, and open `Runner Thermo.exe` inside the folder. If Windows SmartScreen warns you, click **More info**, then **Run anyway**. The warning appears because the app isn't from a paid, registered publisher.
+- **Mac:** download `Runner-Thermo-macos.zip`, unzip it, and drag **Runner Thermo** into Applications. The first time, right-click it and choose **Open**. If macOS says it's damaged, run `xattr -cr "/Applications/Runner Thermo.app"` in Terminal, which removes the "downloaded from the internet" flag.
+- **Anywhere with Java 17 or newer:** download `runner-thermo-sim.jar` and run `java -jar runner-thermo-sim.jar`, or add `--cli` for the terminal version.
+
 **Run it from source** (Java 17 or newer)
 
 ```bash
@@ -133,6 +141,7 @@ This packages `Runner Thermo.app` and installs it in `/Applications`.
 - [x] **Sprint mode.** The lab itself: constant acceleration from rest, power in horsepower, several trials at once.
 - [x] **Lab comparison.** Enter your class's answer and see the percent difference.
 - [x] **Reality check.** Flags times faster than Usain Bolt's.
+- [x] **Windows.** Downloadable Windows and Mac builds, made automatically by GitHub Actions.
 - [ ] **Watch files.** Import a run from GPX or FIT instead of typing splits.
 - [ ] **Hills.** Add the work of climbing, $mgh$.
 - [ ] **Wind.** Add air resistance, $\tfrac{1}{2}\rho C_d A v^2$.
@@ -150,7 +159,8 @@ This packages `Runner Thermo.app` and installs it in `/Applications`.
 | `src/runnersim/cli/` | The terminal version |
 | `src/runnersim/gui/` | The Mac app |
 | `test/` | Physics tests |
-| `assets/` | App icon and README images |
+| `assets/` | App icons (Mac and Windows) and README images |
+| `.github/workflows/` | Builds the Windows and Mac downloads on every release |
 
 Each work model is one class that implements `WorkModel`, so adding a new one, like running uphill, doesn't touch anything else.
 

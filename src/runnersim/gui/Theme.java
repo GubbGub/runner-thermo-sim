@@ -32,19 +32,49 @@ final class Theme {
         }
         Set<String> installed = new HashSet<>(Arrays.asList(
                 GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()));
-        serifFamily = firstInstalled(installed, "New York", "New York Medium", "Iowan Old Style", "Charter", "Georgia", Font.SERIF);
-        sansFamily = firstInstalled(installed, "SF Pro Text", "SF Pro", "Helvetica Neue", "Inter", "Segoe UI", Font.SANS_SERIF);
+        serifFamily = firstInstalled(installed, "New York", "New York Medium", "Iowan Old Style", "Charter", "Georgia", "Cambria", Font.SERIF);
+        sansFamily = firstInstalled(installed, "SF Pro Text", "SF Pro", "Helvetica Neue", "Inter", "Segoe UI Variable Text", "Segoe UI", Font.SANS_SERIF);
     }
 
     static Theme detect() {
         String override = System.getenv("RUNNER_THEME");
         if (override != null) return new Theme(override.equalsIgnoreCase("dark"));
-        return new Theme(macDarkMode());
+        return new Theme(systemDarkMode());
+    }
+
+    /** Asks the operating system whether dark mode is on. Anything else gets the light theme. */
+    private static boolean systemDarkMode() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (os.contains("mac")) return macDarkMode();
+        if (os.contains("win")) return windowsDarkMode();
+        return false;
+    }
+
+    /**
+     * Windows stores the app theme in the registry: AppsUseLightTheme = 0 means dark.
+     * The output line looks like "    AppsUseLightTheme    REG_DWORD    0x0".
+     */
+    private static boolean windowsDarkMode() {
+        try {
+            Process p = new ProcessBuilder("reg", "query",
+                    "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                    "/v", "AppsUseLightTheme").redirectErrorStream(true).start();
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line;
+                boolean dark = false;
+                while ((line = r.readLine()) != null) {
+                    if (line.contains("AppsUseLightTheme")) dark = line.trim().endsWith("0x0");
+                }
+                p.waitFor();
+                return dark;
+            }
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** macOS stores dark mode as AppleInterfaceStyle = Dark. The key is missing in light mode. */
     private static boolean macDarkMode() {
-        if (!System.getProperty("os.name", "").toLowerCase().contains("mac")) return false;
         try {
             Process p = new ProcessBuilder("defaults", "read", "-g", "AppleInterfaceStyle").redirectErrorStream(true).start();
             try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
