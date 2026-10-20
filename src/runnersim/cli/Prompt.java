@@ -51,6 +51,44 @@ final class Prompt {
         return ask(label, "");
     }
 
+    /** Re-asks until the parser accepts the answer. Parsers throw IllegalArgumentException with a helpful message. */
+    double parsed(String label, String hint, java.util.function.ToDoubleFunction<String> parser) {
+        while (true) {
+            String s = ask(label, "(" + hint + ")");
+            try {
+                return parser.applyAsDouble(s);
+            } catch (IllegalArgumentException e) {
+                complain(e.getMessage());
+            }
+        }
+    }
+
+    /** One or more times separated by commas or spaces. */
+    java.util.List<Double> times(String label, String hint) {
+        while (true) {
+            String s = ask(label, "(" + hint + ")");
+            try {
+                java.util.List<Double> list = new java.util.ArrayList<>();
+                for (String part : s.split("[,\\s]+")) if (!part.isBlank()) list.add(Units.parseTime(part));
+                if (!list.isEmpty()) return list;
+                complain("Enter at least one time.");
+            } catch (IllegalArgumentException e) {
+                complain(e.getMessage());
+            }
+        }
+    }
+
+    /** Picks one option by typing its name or first letter. Returns the option's index. */
+    int choice(String label, String... options) {
+        while (true) {
+            String s = ask(label, "(" + String.join(" / ", options) + ")").toLowerCase();
+            for (int i = 0; i < options.length; i++) {
+                if (!s.isEmpty() && options[i].startsWith(s)) return i;
+            }
+            complain("Type " + String.join(" or ", options) + ".");
+        }
+    }
+
     double number(String label, String unit, double min, double max) {
         while (true) {
             String s = ask(label, "(" + unit + ")");

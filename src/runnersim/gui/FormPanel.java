@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalDouble;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import javax.swing.Box;
 import javax.swing.JButton;
@@ -18,28 +19,39 @@ import javax.swing.JTextField;
 import runnersim.learn.Term;
 import runnersim.model.Run;
 import runnersim.model.Runner;
+import runnersim.physics.SprintReport;
 import runnersim.physics.Units;
 
 /**
- * The input card: runner biometrics, the run, and optional watch data.
- * Turns text into a validated Runner and Run, or shows a plain-language error.
+ * The input card. A switch at the top picks the kind of run:
+ *   Sprint: a short dash from a standstill, timed once or several times (the AP Physics lab).
+ *   Distance run: a longer run with optional watch data and splits.
  */
 final class FormPanel extends Ui.Card {
 
     private static final long serialVersionUID = 1L;
 
     private final transient Theme t;
-    private final JTextField name, mass, height, distance, time, cadence, oscillation, splitLength, splitTimes;
+    private final JTextField name, mass, height;
+    private final JTextField sprintDistance, sprintTimes, labAnswer;
+    private final JTextField distance, time, cadence, oscillation, splitLength, splitTimes;
+    private final JPanel sprintSection, distanceSection;
     private final JLabel error;
+    private boolean sprintMode = true;
     final JButton calculate;
 
-    FormPanel(Theme t, BiConsumer<Runner, Run> onCalculate) {
+    FormPanel(Theme t, Consumer<SprintReport> onSprint, BiConsumer<Runner, Run> onRun) {
         super(new BorderLayout(), t.card, 16, 20);
         this.t = t;
 
         name = Ui.field(t, "Your name");
-        mass = Ui.field(t, "Body mass in kilograms");
-        height = Ui.field(t, "Height in centimeters");
+        mass = Ui.field(t, "Kilograms, or add lb: 158 lb");
+        height = Ui.field(t, "Centimeters, or feet and inches: 5'11");
+
+        sprintDistance = Ui.field(t, "Sprint distance in meters, e.g. 10");
+        sprintTimes = Ui.field(t, "One or more times in seconds, e.g. 1.85, 1.90");
+        labAnswer = Ui.field(t, "The horsepower your class calculated, to compare");
+
         distance = Ui.field(t, "Distance in meters, e.g. 5000");
         time = Ui.field(t, "Total time as mm:ss or h:mm:ss");
         cadence = Ui.field(t, "Steps per minute from your watch");
@@ -48,25 +60,42 @@ final class FormPanel extends Ui.Card {
         splitTimes = Ui.field(t, "Lap times separated by commas, e.g. 4:20, 4:15, 4:18");
 
         JPanel col = Ui.column();
+        col.add(Ui.segmented(t, new String[] {"Sprint", "Distance run"}, 0, i -> setSprintMode(i == 0)));
+        col.add(Box.createVerticalStrut(18));
+
         col.add(Ui.eyebrow(t, "Runner"));
         col.add(Box.createVerticalStrut(8));
         col.add(Ui.labeled(t, "Name", "", name));
         col.add(Box.createVerticalStrut(10));
-        col.add(pair(Ui.labeled(t, "Mass", "kg", mass), Ui.labeled(t, "Height", "cm", height)));
+        col.add(pair(Ui.labeled(t, "Mass", "kg or lb", mass), Ui.labeled(t, "Height", "cm or ft'in", height)));
 
-        col.add(Box.createVerticalStrut(20));
-        col.add(Ui.eyebrow(t, "Run"));
-        col.add(Box.createVerticalStrut(8));
-        col.add(pair(Ui.labeled(t, "Distance", "m", distance), Ui.labeled(t, "Time", "mm:ss", time)));
+        sprintSection = Ui.column();
+        sprintSection.add(Box.createVerticalStrut(20));
+        sprintSection.add(Ui.withHelp(t, Ui.eyebrow(t, "Sprint from a standstill"), Term.CONSTANT_ACCELERATION));
+        sprintSection.add(Box.createVerticalStrut(8));
+        sprintSection.add(Ui.labeled(t, "Distance", "m", sprintDistance));
+        sprintSection.add(Box.createVerticalStrut(10));
+        sprintSection.add(Ui.labeled(t, "Trial times", "seconds, comma separated", sprintTimes, Term.TIMING_ERROR));
+        sprintSection.add(Box.createVerticalStrut(10));
+        sprintSection.add(Ui.labeled(t, "Your lab's answer", "hp · optional", labAnswer, Term.PERCENT_DIFFERENCE));
+        col.add(sprintSection);
 
-        col.add(Box.createVerticalStrut(20));
-        col.add(Ui.eyebrow(t, "From your watch · optional"));
-        col.add(Box.createVerticalStrut(8));
-        col.add(pair(Ui.labeled(t, "Cadence", "spm", cadence, Term.CADENCE), Ui.labeled(t, "Bounce", "cm", oscillation, Term.VERTICAL_OSCILLATION)));
-        col.add(Box.createVerticalStrut(10));
-        col.add(Ui.labeled(t, "Split length", "m", splitLength));
-        col.add(Box.createVerticalStrut(10));
-        col.add(Ui.labeled(t, "Split times", "comma separated", splitTimes));
+        distanceSection = Ui.column();
+        distanceSection.add(Box.createVerticalStrut(20));
+        distanceSection.add(Ui.eyebrow(t, "Run"));
+        distanceSection.add(Box.createVerticalStrut(8));
+        distanceSection.add(pair(Ui.labeled(t, "Distance", "m", distance), Ui.labeled(t, "Time", "mm:ss", time)));
+        distanceSection.add(Box.createVerticalStrut(20));
+        distanceSection.add(Ui.eyebrow(t, "From your watch · optional"));
+        distanceSection.add(Box.createVerticalStrut(8));
+        distanceSection.add(pair(Ui.labeled(t, "Cadence", "spm", cadence, Term.CADENCE),
+                Ui.labeled(t, "Bounce", "cm", oscillation, Term.VERTICAL_OSCILLATION)));
+        distanceSection.add(Box.createVerticalStrut(10));
+        distanceSection.add(Ui.labeled(t, "Split length", "m", splitLength));
+        distanceSection.add(Box.createVerticalStrut(10));
+        distanceSection.add(Ui.labeled(t, "Split times", "comma separated", splitTimes));
+        distanceSection.setVisible(false);
+        col.add(distanceSection);
 
         col.add(Box.createVerticalStrut(20));
         calculate = Ui.primaryButton(t, "Calculate");
@@ -80,7 +109,16 @@ final class FormPanel extends Ui.Card {
         add(col, BorderLayout.NORTH);
         setPreferredSize(new Dimension(320, getPreferredSize().height));
 
-        calculate.addActionListener(e -> submit(onCalculate));
+        calculate.addActionListener(e -> submit(onSprint, onRun));
+    }
+
+    private void setSprintMode(boolean sprint) {
+        sprintMode = sprint;
+        sprintSection.setVisible(sprint);
+        distanceSection.setVisible(!sprint);
+        showError(" ");
+        revalidate();
+        repaint();
     }
 
     private JPanel pair(JPanel a, JPanel b) {
@@ -93,11 +131,15 @@ final class FormPanel extends Ui.Card {
         return p;
     }
 
-    private void submit(BiConsumer<Runner, Run> onCalculate) {
+    private void submit(Consumer<SprintReport> onSprint, BiConsumer<Runner, Run> onRun) {
         try {
-            Runner runner = new Runner(name.getText(),
-                    number(mass, "Mass"), number(height, "Height"));
-            onCalculate.accept(runner, buildRun());
+            Runner runner = new Runner(name.getText(), Units.parseMassKg(mass.getText()), Units.parseHeightCm(height.getText()));
+            if (sprintMode) {
+                onSprint.accept(SprintReport.analyze(runner, number(sprintDistance, "Distance"),
+                        times(sprintTimes, "Trial times"), optional(labAnswer, "Your lab's answer")));
+            } else {
+                onRun.accept(runner, buildRun());
+            }
             showError(" ");
         } catch (IllegalArgumentException ex) {
             showError(ex.getMessage());
@@ -108,17 +150,19 @@ final class FormPanel extends Ui.Card {
         double d = number(distance, "Distance");
         OptionalDouble cad = optional(cadence, "Cadence");
         OptionalDouble osc = optional(oscillation, "Bounce");
-
-        String timesText = splitTimes.getText().trim();
-        if (!timesText.isEmpty()) {
-            double len = number(splitLength, "Split length");
-            List<Double> times = new ArrayList<>();
-            for (String part : timesText.split("[,\\s]+")) {
-                if (!part.isBlank()) times.add(Units.parseTime(part));
-            }
-            return Run.fromSplitTimes(d, len, times, cad, osc);
+        if (!splitTimes.getText().isBlank()) {
+            return Run.fromSplitTimes(d, number(splitLength, "Split length"), times(splitTimes, "Split times"), cad, osc);
         }
         return Run.of(d, Units.parseTime(time.getText()), cad, osc);
+    }
+
+    private static List<Double> times(JTextField f, String what) {
+        List<Double> list = new ArrayList<>();
+        for (String part : f.getText().trim().split("[,\\s]+")) {
+            if (!part.isBlank()) list.add(Units.parseTime(part));
+        }
+        if (list.isEmpty()) throw new IllegalArgumentException(what + " are required.");
+        return list;
     }
 
     private static double number(JTextField f, String what) {
@@ -139,11 +183,17 @@ final class FormPanel extends Ui.Card {
         error.setText(message);
     }
 
-    /** Fills the form with a sample run so the app shows something useful on first open. */
+    void focusFirstField() {
+        name.requestFocusInWindow();
+    }
+
+    /** Fills the form with a sample sprint so the app shows something useful on first open. */
     void fillExample() {
-        name.setText("Sample runner");
-        mass.setText("70");
-        height.setText("178");
+        name.setText("Sample sprinter");
+        mass.setText("160 lb");
+        height.setText("5'10");
+        sprintDistance.setText("10");
+        sprintTimes.setText("1.85, 1.90");
         distance.setText("5000");
         time.setText("21:20");
         splitLength.setText("1000");

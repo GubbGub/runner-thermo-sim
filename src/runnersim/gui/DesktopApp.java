@@ -38,11 +38,11 @@ public final class DesktopApp {
         header.add(Box.createVerticalStrut(6));
         header.add(Ui.label("Runner Thermo", t.serif(Font.PLAIN, 38f), t.fg));
         header.add(Box.createVerticalStrut(4));
-        header.add(Ui.label("Where the energy of a run goes: work, heat and power from your own data.", t.serif(Font.PLAIN, 17f), t.muted));
+        header.add(Ui.label("Where the energy of a run goes: work, heat and horsepower from your own data.", t.serif(Font.PLAIN, 17f), t.muted));
         root.add(header, BorderLayout.NORTH);
 
         ResultsPanel results = new ResultsPanel(t);
-        FormPanel form = new FormPanel(t, (runner, run) -> results.show(analyzer.analyze(runner, run)));
+        FormPanel form = new FormPanel(t, results::showSprint, (runner, run) -> results.show(analyzer.analyze(runner, run)));
 
         JPanel formHolder = new JPanel(new BorderLayout());
         formHolder.setOpaque(false);
@@ -74,6 +74,9 @@ public final class DesktopApp {
 
         form.fillExample();
         form.calculate.doClick();
+        frame.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowOpened(java.awt.event.WindowEvent e) { form.focusFirstField(); }
+        });
         return frame;
     }
 

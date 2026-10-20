@@ -64,7 +64,40 @@ public enum Term {
     KINETIC_ENERGY("Kinetic energy (KE)",
             "The energy of motion. Speeding up between splits adds kinetic energy, and that takes work. "
             + "Slowing down releases it, mostly as heat in your muscles, so the app doesn't count it as extra work.",
-            "KE = ½ · m · v²");
+            "KE = ½ · m · v²"),
+
+    HORSEPOWER("Horsepower",
+            "A unit of power James Watt invented to sell steam engines, by comparing them with the horses they replaced. "
+            + "One horsepower is about 746 watts. A person can keep up roughly a tenth of a horsepower for hours, "
+            + "but a hard sprint can briefly reach several.",
+            "1 hp = 745.7 W"),
+
+    ACCELERATION("Acceleration",
+            "How quickly speed changes, in meters per second, every second. Starting from rest with steady acceleration, "
+            + "distance grows with time squared, so the time for a known distance gives the acceleration. "
+            + "Dividing by 9.81 compares it with gravity (g).",
+            "d = ½at²   →   a = 2d / t²"),
+
+    PEAK_POWER("Peak power",
+            "Power is force times speed. With steady acceleration the force stays the same while speed keeps climbing, "
+            + "so power is highest at the finish line, exactly twice the average.",
+            "P = F · v = m · a · v"),
+
+    CONSTANT_ACCELERATION("Constant acceleration",
+            "The lab's simplifying assumption: the runner speeds up at the same rate the whole way. "
+            + "Real sprinters accelerate hardest in the first few steps and then level off, "
+            + "so this model overestimates speed at the line, but it makes the math solvable from one time.",
+            "v_final = 2d / t"),
+
+    TIMING_ERROR("Timing error",
+            "Hand timing adds a delay at the start and the finish, often 0.1 to 0.3 seconds. That matters a lot here: "
+            + "average power depends on time cubed, so a 5% timing error becomes about a 15% power error.",
+            "P = 2·m·d² / t³"),
+
+    PERCENT_DIFFERENCE("Percent difference",
+            "How far your lab's answer is from the model's, as a share of the model's value. "
+            + "Under a few percent means your class did the same math; a big gap points to a different method or a slip in units.",
+            "(lab − model) / model × 100%");
 
     private final String title;
     private final String explanation;

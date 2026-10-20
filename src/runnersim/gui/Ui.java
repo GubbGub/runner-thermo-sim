@@ -298,4 +298,66 @@ final class Ui {
         popup.add(wrap);
         return popup;
     }
+    /** A two-or-more option switch, like the segmented controls in macOS. */
+    static JPanel segmented(Theme t, String[] options, int selected, java.util.function.IntConsumer onChange) {
+        Card track = new Card(new java.awt.GridLayout(1, options.length, 4, 0), t.field, 9, 3);
+        javax.swing.ButtonGroup group = new javax.swing.ButtonGroup();
+        for (int i = 0; i < options.length; i++) {
+            final int index = i;
+            javax.swing.JToggleButton b = new javax.swing.JToggleButton(options[i]) {
+                private static final long serialVersionUID = 1L;
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                    if (isSelected()) {
+                        g2.setColor(t.card);
+                        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 14, 14);
+                    }
+                    if (isFocusOwner()) {
+                        g2.setColor(t.accent);
+                        g2.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 14, 14);
+                    }
+                    g2.setFont(getFont().deriveFont(isSelected() ? Font.BOLD : Font.PLAIN));
+                    g2.setColor(isSelected() ? t.fg : t.muted);
+                    java.awt.FontMetrics fm = g2.getFontMetrics();
+                    String text = getText();
+                    g2.drawString(text, (getWidth() - fm.stringWidth(text)) / 2f, (getHeight() + fm.getAscent() - fm.getDescent()) / 2f);
+                    g2.dispose();
+                }
+            };
+            b.setFont(t.sans(Font.PLAIN, 13f));
+            b.setContentAreaFilled(false);
+            b.setBorderPainted(false);
+            b.setFocusPainted(false);
+            b.setOpaque(false);
+            b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            b.setPreferredSize(new Dimension(100, 28));
+            b.setSelected(i == selected);
+            b.addActionListener(e -> onChange.accept(index));
+            group.add(b);
+            track.add(b);
+        }
+        track.setAlignmentX(Component.LEFT_ALIGNMENT);
+        track.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        return track;
+    }
+
+    /** A short paragraph that wraps to the available width. */
+    static JTextArea paragraph(Theme t, String text, java.awt.Color color, int width) {
+        JTextArea a = new JTextArea(text);
+        a.setLineWrap(true);
+        a.setWrapStyleWord(true);
+        a.setEditable(false);
+        a.setFocusable(false);
+        a.setOpaque(false);
+        a.setFont(t.sans(Font.PLAIN, 12f));
+        a.setForeground(color);
+        a.setBorder(BorderFactory.createEmptyBorder());
+        a.setSize(new Dimension(width, Short.MAX_VALUE));
+        a.setPreferredSize(new Dimension(width, a.getPreferredSize().height));
+        a.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return a;
+    }
 }

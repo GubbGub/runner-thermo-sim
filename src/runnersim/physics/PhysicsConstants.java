@@ -10,6 +10,12 @@ public final class PhysicsConstants {
     /** Gravitational acceleration at Earth's surface, m/s². */
     public static final double G = 9.81;
 
+    /** Watts in one mechanical horsepower (James Watt's definition: 550 foot-pounds per second). */
+    public static final double WATTS_PER_HORSEPOWER = 745.699872;
+
+    /** Kilograms in one pound (exact, by definition). */
+    public static final double KG_PER_POUND = 0.45359237;
+
     /** Joules in one kilocalorie (one food Calorie). */
     public static final double JOULES_PER_KCAL = 4184.0;
 

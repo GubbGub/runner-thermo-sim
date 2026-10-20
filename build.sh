@@ -48,6 +48,7 @@ case "${1:-}" in
     ditto "$STAGE/dist/Runner Thermo.app" "/Applications/Runner Thermo.app"
     # Re-sign the finished app as one unit (ad-hoc, no Apple developer account needed).
     # Without this, macOS can call the app "damaged" and refuse to open it.
+    chmod -R u+w "/Applications/Runner Thermo.app"   # bundled Java ships some files read-only
     xattr -cr "/Applications/Runner Thermo.app"
     codesign --force --deep --sign - "/Applications/Runner Thermo.app"
     codesign --verify --deep --strict "/Applications/Runner Thermo.app"

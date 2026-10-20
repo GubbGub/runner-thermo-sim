@@ -16,7 +16,7 @@
 
 ## The story
 
-In AP Physics II we ran a lab on runners. We measured each runner's mass and timed a lap, then worked out how much mechanical work they did and how much power they put out.
+In AP Physics II we ran a lab on runners. We weighed each runner, timed a 10 m sprint from a standstill, and worked out how much power they put out in horsepower.
 
 I run, and I kept thinking about where all that energy actually goes. So I pointed the same physics at my own watch data.
 
@@ -91,11 +91,19 @@ Every constant lives in [`PhysicsConstants.java`](src/runnersim/physics/PhysicsC
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/readme/app-dark.png">
-    <img alt="The Runner Thermo Mac app showing a 5 km run: 366 kJ of mechanical work, 350 kcal burned, 1.10 MJ of heat and 286 W of mechanical power." src="assets/readme/app-light.png" width="760">
+    <img alt="Runner Thermo in sprint mode: a 10 m sprint averaging 2.92 hp, with the class's answer of 2.91 hp shown 0.2% away from the model." src="assets/readme/app-light.png" width="760">
   </picture>
 </p>
 
-Type in your height, weight and a run. If you have a watch, add your cadence, vertical oscillation and lap splits for better numbers. Anything you leave out is estimated and labeled that way.
+It has two modes.
+
+**Sprint.** The lab itself. Enter a runner's weight and height, the sprint distance, and one or more stopwatch times. The app assumes steady acceleration from a standstill and works out acceleration, speed at the line, average and peak power in watts and horsepower, and where the energy went. Type in your class's answer and it shows how close you came.
+
+**Distance run.** For longer runs with watch data: cadence, vertical oscillation and lap splits, with two models of the work compared side by side.
+
+Weight works in kilograms or pounds (`158 lb`), height in centimeters or feet and inches (`5'11`), and times keep their decimals (`1.85 s`).
+
+**Reality check.** Every sprint time is compared with Usain Bolt's splits from his 9.58 s world record. If a stopwatch says someone beat Bolt over 10 m, the app says the timing is probably off. Because power depends on time cubed, a small timing slip turns into a big power error, which might be the biggest lesson in the whole lab.
 
 **Built to teach.** Every physics term has a small **?** beside it. Click it to see what the term means in plain English, along with its formula. In the terminal version, type a term like `froude` after your results.
 
@@ -122,11 +130,13 @@ This packages `Runner Thermo.app` and installs it in `/Applications`.
 - [x] **Two models.** Lab measurements and Newton, side by side.
 - [x] **Two interfaces.** A terminal version and a Mac app on one engine.
 - [x] **Explanations.** A ? on every physics term, from cadence to the Froude number.
-- [ ] **Lab comparison.** Enter numbers measured in class and see how close the estimates come.
+- [x] **Sprint mode.** The lab itself: constant acceleration from rest, power in horsepower, several trials at once.
+- [x] **Lab comparison.** Enter your class's answer and see the percent difference.
+- [x] **Reality check.** Flags times faster than Usain Bolt's.
 - [ ] **Watch files.** Import a run from GPX or FIT instead of typing splits.
 - [ ] **Hills.** Add the work of climbing, $mgh$.
 - [ ] **Wind.** Add air resistance, $\tfrac{1}{2}\rho C_d A v^2$.
-- [ ] **Reality check.** Compare my numbers with a treadmill test.
+- [ ] **Treadmill test.** Compare my numbers with a measured treadmill test.
 
 <br>
 

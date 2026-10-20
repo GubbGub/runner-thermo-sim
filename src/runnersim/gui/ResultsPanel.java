@@ -15,6 +15,8 @@ import runnersim.learn.Term;
 import runnersim.physics.EnergyBreakdown;
 import runnersim.physics.Gait;
 import runnersim.physics.RunReport;
+import runnersim.physics.SprintReport;
+import runnersim.physics.SprintTrial;
 import runnersim.physics.Units;
 
 /**
@@ -53,7 +55,7 @@ final class ResultsPanel extends JPanel {
         Gait g = r.gait();
 
         JLabel title = Ui.label(r.runner().getName() + " · " + Units.formatDistance(r.run().getDistanceM())
-                + " in " + Units.formatTime(r.run().getTimeS()), t.serif(Font.PLAIN, 26f), t.fg);
+                + " in " + Units.formatDuration(r.run().getTimeS()), t.serif(Font.PLAIN, 26f), t.fg);
         JLabel sub = Ui.label(Units.formatTime(r.paceSecondsPerKm()) + " /km  ·  " + Units.formatTime(r.paceSecondsPerMile())
                 + " /mi  ·  " + f("%.2f m/s", r.averageSpeedMps()), t.sans(Font.PLAIN, 13f), t.muted);
         add(left(title));
@@ -68,7 +70,7 @@ final class ResultsPanel extends JPanel {
         tiles.add(tile("Released as heat", Units.formatEnergy(main.heatJ()),
                 f("+%.1f °C if none escaped", r.temperatureRiseIfNoCoolingK(main)), Term.HEAT));
         tiles.add(tile("Mechanical power", f("%.0f W", r.mechanicalPowerW(main)),
-                f("%.2f W/kg", r.mechanicalPowerW(main) / r.runner().getMassKg()), Term.POWER));
+                Units.formatHorsepower(r.mechanicalPowerW(main)) + f(" · %.2f W/kg", r.mechanicalPowerW(main) / r.runner().getMassKg()), Term.POWER));
         add(left(tiles));
         add(Box.createVerticalStrut(16));
 
@@ -119,7 +121,7 @@ final class ResultsPanel extends JPanel {
                 if (i > 0) splits.add(Ui.divider(t));
                 String ke = (s.deltaKineticJ() >= 0 ? "+" : "") + Units.formatEnergy(s.deltaKineticJ()) + " KE";
                 splits.add(Ui.row(t, s.number() + "   " + Units.formatDistance(s.distanceM()),
-                        Units.formatTime(s.timeS()), Units.formatTime(1000 / s.speedMps()) + " /km   " + ke));
+                        Units.formatDuration(s.timeS()), Units.formatTime(1000 / s.speedMps()) + " /km   " + ke));
             }
             add(card(splits));
         }
@@ -127,6 +129,101 @@ final class ResultsPanel extends JPanel {
         add(Box.createVerticalGlue());
         revalidate();
         repaint();
+        scrollToTop();
+    }
+
+    /** Results for a sprint lab: power in watts and horsepower, the trials, a lab comparison and a reality check. */
+    void showSprint(SprintReport r) {
+        removeAll();
+        SprintTrial avg = r.average();
+        int n = r.trials().size();
+
+        JLabel title = Ui.label(r.runner().getName() + " · " + f("%.0f m sprint", r.distanceM()), t.serif(Font.PLAIN, 26f), t.fg);
+        String timeText = n > 1 ? "average of " + n + " trials " + Units.formatDuration(avg.timeS()) : Units.formatDuration(avg.timeS());
+        JLabel sub = Ui.label(timeText + f("  ·  %.1f kg  ·  %.0f cm", r.runner().getMassKg(), r.runner().getHeightCm()),
+                t.sans(Font.PLAIN, 13f), t.muted);
+        add(left(title));
+        add(Box.createVerticalStrut(2));
+        add(left(sub));
+        add(Box.createVerticalStrut(16));
+
+        JPanel tiles = new JPanel(new GridLayout(2, 2, 12, 12));
+        tiles.setOpaque(false);
+        tiles.add(tile("Average power", Units.formatHorsepower(avg.averagePowerW()),
+                Units.formatWatts(avg.averagePowerW()), Term.HORSEPOWER));
+        tiles.add(tile("Peak power at the line", Units.formatHorsepower(avg.peakPowerW()),
+                Units.formatWatts(avg.peakPowerW()) + " · twice the average", Term.PEAK_POWER));
+        tiles.add(tile("Acceleration", f("%.2f m/s²", avg.accelerationMps2()),
+                f("%.2f g · %.0f N of force", avg.accelerationG(), avg.forceN()), Term.ACCELERATION));
+        tiles.add(tile("Speed at the line", f("%.1f m/s", avg.finalSpeedMps()),
+                f("%.1f km/h · average %.2f m/s", avg.finalSpeedMps() * 3.6, avg.averageSpeedMps()), Term.CONSTANT_ACCELERATION));
+        add(left(tiles));
+
+        if (r.labHorsepower().isPresent()) {
+            add(Box.createVerticalStrut(12));
+            double diff = r.labDifferencePercent().getAsDouble();
+            JPanel lab = Ui.column();
+            lab.add(Ui.withHelp(t, Ui.eyebrow(t, "Your lab vs. the model"), Term.PERCENT_DIFFERENCE));
+            lab.add(Box.createVerticalStrut(4));
+            lab.add(Ui.row(t, "Your class's answer", f("%.2f hp", r.labHorsepower().getAsDouble()), ""));
+            lab.add(Ui.divider(t));
+            lab.add(Ui.row(t, "This app", Units.formatHorsepower(avg.averagePowerW()), "average power"));
+            lab.add(Ui.divider(t));
+            lab.add(Ui.row(t, "Difference", f("%+.1f%%", diff), Math.abs(diff) < 5 ? "same method, nice work" : "check units and formulas"));
+            add(card(lab));
+        }
+
+        add(Box.createVerticalStrut(12));
+        JPanel work = Ui.column();
+        work.add(Ui.eyebrow(t, "Where the energy went"));
+        work.add(Box.createVerticalStrut(4));
+        work.add(Ui.row(t, "Work done (kinetic energy at the line)", Units.formatEnergy(avg.workJ()), "", Term.KINETIC_ENERGY));
+        work.add(Ui.divider(t));
+        work.add(Ui.row(t, "Energy burned", Units.formatEnergy(avg.metabolicJ()), f("%.1f kcal", avg.metabolicJ() / 4184), Term.ENERGY_BURNED));
+        work.add(Ui.divider(t));
+        work.add(Ui.row(t, "Released as heat", Units.formatEnergy(avg.heatJ()), "75% of it", Term.HEAT));
+        add(card(work));
+
+        add(Box.createVerticalStrut(12));
+        JPanel trials = Ui.column();
+        trials.add(Ui.withHelp(t, Ui.eyebrow(t, n > 1 ? "Each trial" : "The trial"), Term.TIMING_ERROR));
+        trials.add(Box.createVerticalStrut(4));
+        for (int i = 0; i < n; i++) {
+            SprintTrial tr = r.trials().get(i);
+            if (i > 0) trials.add(Ui.divider(t));
+            trials.add(Ui.row(t, "Trial " + (i + 1) + "   " + Units.formatDuration(tr.timeS()),
+                    Units.formatHorsepower(tr.averagePowerW()), f("%.1f m/s at the line", tr.finalSpeedMps())));
+        }
+        add(card(trials));
+
+        add(Box.createVerticalStrut(12));
+        JPanel check = Ui.column();
+        check.add(Ui.eyebrow(t, "Reality check"));
+        check.add(Box.createVerticalStrut(6));
+        if (r.warnings().isEmpty()) {
+            check.add(Ui.paragraph(t, "These times are humanly possible. Usain Bolt's first " + f("%.0f", r.distanceM())
+                    + " m took about " + f("%.2f", runnersim.physics.RealityCheck.boltTimeS(r.distanceM()))
+                    + " s from his first movement, for comparison.", t.muted, 440));
+        } else {
+            for (String w : r.warnings()) {
+                check.add(Ui.paragraph(t, w, t.error, 440));
+                check.add(Box.createVerticalStrut(6));
+            }
+        }
+        check.add(Box.createVerticalStrut(6));
+        check.add(Ui.paragraph(t, "This model assumes steady acceleration. Real sprinters push hardest in the first steps, "
+                + "so the true speed at the line is lower and the true peak power comes earlier.", t.faint, 440));
+        add(card(check));
+
+        add(Box.createVerticalGlue());
+        revalidate();
+        repaint();
+        scrollToTop();
+    }
+
+    /** New results always start at the top, not wherever the last ones were scrolled to. */
+    private void scrollToTop() {
+        javax.swing.SwingUtilities.invokeLater(() -> scrollRectToVisible(new java.awt.Rectangle(0, 0, 1, 1)));
     }
 
     private JPanel tile(String label, String value, String note, Term term) {

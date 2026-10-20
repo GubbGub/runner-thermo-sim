@@ -12,7 +12,10 @@ import runnersim.model.Runner;
 import runnersim.physics.EnergyBreakdown;
 import runnersim.physics.Gait;
 import runnersim.physics.RunAnalyzer;
+import runnersim.physics.RealityCheck;
 import runnersim.physics.RunReport;
+import runnersim.physics.SprintReport;
+import runnersim.physics.SprintTrial;
 import runnersim.physics.Units;
 
 /**
@@ -35,14 +38,17 @@ public final class ConsoleApp {
             printHeader();
 
             Runner runner = askRunner(prompt);
-            boolean again = true;
-            while (again) {
-                Run run = askRun(prompt);
-                RunReport report = analyzer.analyze(runner, run);
-                printReport(report);
+            while (true) {
+                if (prompt.choice("Sprint from a standstill, or a distance run?", "sprint", "distance") == 0) {
+                    printSprint(askSprint(prompt, runner));
+                } else {
+                    printReport(analyzer.analyze(runner, askRun(prompt)));
+                }
                 learn(prompt);
-                again = prompt.yesNo("Analyze another run?", false);
+                int next = prompt.choice("Next: another run for " + runner.getName() + ", a new runner, or quit?", "same", "new", "quit");
                 System.out.println();
+                if (next == 2) break;
+                if (next == 1) runner = askRunner(prompt);
             }
         } catch (Prompt.InputClosedException e) {
             System.out.println();
@@ -55,19 +61,19 @@ public final class ConsoleApp {
     private Runner askRunner(Prompt p) {
         section("Runner");
         String name = p.text("Name");
-        double mass = p.number("Mass", "kg", 20, 250);
-        double height = p.number("Height", "cm", 100, 250);
+        double mass = p.parsed("Mass", "kg, or add lb like 158 lb", Units::parseMassKg);
+        double height = p.parsed("Height", "cm, or feet like 5'11", Units::parseHeightCm);
         return new Runner(name, mass, height);
     }
 
     private Run askRun(Prompt p) {
         section("Run");
-        double distance = p.number("Distance", "m", 50, 200_000);
+        double distance = p.number("Distance", "m", 1, 200_000);
         OptionalDouble cadence = p.optionalNumber("Cadence from your watch", "steps/min", 60, 260);
         OptionalDouble bounce = p.optionalNumber("Vertical oscillation", "cm", 1, 25);
 
         if (p.yesNo("Enter splits from your watch?", false)) {
-            double splitLength = p.number("Split length", "m", 50, distance);
+            double splitLength = p.number("Split length", "m", 1, distance);
             int count = Run.splitCount(distance, splitLength);
             List<Double> times = new ArrayList<>();
             double remaining = distance;
@@ -81,6 +87,68 @@ public final class ConsoleApp {
 
         double time = p.time("Total time");
         return Run.of(distance, time, cadence, bounce);
+    }
+
+    private SprintReport askSprint(Prompt p, Runner runner) {
+        section("Sprint from a standstill");
+        double distance = p.number("Distance", "m", 1, 400);
+        List<Double> times = p.times("Trial times", "seconds, separated by commas, like 1.85, 1.90");
+        OptionalDouble lab = p.optionalNumber("Your lab's answer", "hp", 0.001, 100);
+        return SprintReport.analyze(runner, distance, times, lab);
+    }
+
+    private void printSprint(SprintReport r) {
+        SprintTrial avg = r.average();
+        int n = r.trials().size();
+
+        System.out.println();
+        System.out.println("  " + style.rule(WIDTH));
+        System.out.println("  " + style.bold(r.runner().getName()) + style.muted("  ·  ")
+                + f("%.0f m sprint", r.distanceM()) + style.muted("  ·  ")
+                + (n > 1 ? "average of " + n + " trials " : "") + Units.formatDuration(avg.timeS()));
+        System.out.println("  " + style.muted(f("%.1f kg  ·  %.0f cm  ·  steady acceleration from rest", r.runner().getMassKg(), r.runner().getHeightCm())));
+        System.out.println("  " + style.rule(WIDTH));
+
+        section("Power");
+        row("Average power", Units.formatHorsepower(avg.averagePowerW()), Units.formatWatts(avg.averagePowerW()), Term.HORSEPOWER);
+        row("Peak power at the line", Units.formatHorsepower(avg.peakPowerW()), Units.formatWatts(avg.peakPowerW()) + ", twice the average", Term.PEAK_POWER);
+
+        section("Motion");
+        row("Acceleration", f("%.2f m/s²", avg.accelerationMps2()), f("%.2f g  ·  %.0f N of force", avg.accelerationG(), avg.forceN()), Term.ACCELERATION);
+        row("Speed at the line", f("%.1f m/s", avg.finalSpeedMps()), f("average %.2f m/s", avg.averageSpeedMps()), Term.CONSTANT_ACCELERATION);
+
+        section("Energy");
+        row("Work done", Units.formatEnergy(avg.workJ()), "kinetic energy at the line", Term.KINETIC_ENERGY);
+        row("Energy burned", Units.formatEnergy(avg.metabolicJ()), f("%.1f kcal", avg.metabolicJ() / 4184), Term.ENERGY_BURNED);
+        row("Released as heat", Units.formatEnergy(avg.heatJ()), "75% of it", Term.HEAT);
+
+        if (r.labHorsepower().isPresent()) {
+            double diff = r.labDifferencePercent().getAsDouble();
+            section("Your lab vs. the model");
+            row("Your class's answer", f("%.2f hp", r.labHorsepower().getAsDouble()), "");
+            row("This app", Units.formatHorsepower(avg.averagePowerW()), "average power");
+            row("Difference", f("%+.1f%%", diff), Math.abs(diff) < 5 ? "same method, nice work" : "check units and formulas", Term.PERCENT_DIFFERENCE);
+        }
+
+        if (n > 1) {
+            section("Each trial");
+            for (int i = 0; i < n; i++) {
+                SprintTrial tr = r.trials().get(i);
+                row("Trial " + (i + 1) + "  " + Units.formatDuration(tr.timeS()), Units.formatHorsepower(tr.averagePowerW()),
+                        f("%.1f m/s at the line", tr.finalSpeedMps()), i == 0 ? Term.TIMING_ERROR : null);
+            }
+        }
+
+        section("Reality check");
+        if (r.warnings().isEmpty()) {
+            for (String line : wrap(f("These times are humanly possible. Usain Bolt's first %.0f m took about %.2f s from his first movement.",
+                    r.distanceM(), RealityCheck.boltTimeS(r.distanceM())), WIDTH)) System.out.println("  " + style.muted(line));
+        } else {
+            for (String w : r.warnings()) {
+                for (String line : wrap(w, WIDTH)) System.out.println("  " + style.error(line));
+            }
+        }
+        System.out.println();
     }
 
     // ── Output ───────────────────────────────────────────────────────────
@@ -104,7 +172,7 @@ public final class ConsoleApp {
 
     /** A result line. Terms with an explanation get a blue "?" after the label. */
     private void row(String label, String value, String note, Term term) {
-        int pad = Math.max(1, 26 - label.length() - (term == null ? 0 : 2));
+        int pad = Math.max(1, 28 - label.length() - (term == null ? 0 : 2));
         String name = style.muted(label) + (term == null ? "" : " " + style.accent("?")) + " ".repeat(pad);
         System.out.println("  " + name + style.bold(value) + (note.isEmpty() ? "" : "  " + style.muted(note)));
     }
@@ -151,7 +219,7 @@ public final class ConsoleApp {
         System.out.println();
         System.out.println("  " + style.rule(WIDTH));
         System.out.println("  " + style.bold(r.runner().getName()) + style.muted("  ·  ")
-                + Units.formatDistance(r.run().getDistanceM()) + " in " + Units.formatTime(r.run().getTimeS()));
+                + Units.formatDistance(r.run().getDistanceM()) + " in " + Units.formatDuration(r.run().getTimeS()));
         System.out.println("  " + style.rule(WIDTH));
 
         section("Pace");
@@ -165,7 +233,7 @@ public final class ConsoleApp {
         row("If none escaped", f("+%.1f °C", r.temperatureRiseIfNoCoolingK(main)), "body temperature rise");
 
         section("Power");
-        row("Mechanical power", f("%.0f W", r.mechanicalPowerW(main)), f("%.2f W/kg", r.mechanicalPowerW(main) / r.runner().getMassKg()), Term.POWER);
+        row("Mechanical power", f("%.0f W", r.mechanicalPowerW(main)), Units.formatHorsepower(r.mechanicalPowerW(main)) + f("  ·  %.2f W/kg", r.mechanicalPowerW(main) / r.runner().getMassKg()), Term.POWER);
         row("Metabolic power", f("%.0f W", r.metabolicPowerW(main)), "including heat");
 
         section("Stride");
@@ -195,7 +263,7 @@ public final class ConsoleApp {
             for (RunReport.SplitResult s : r.splits()) {
                 String ke = s.deltaKineticJ() >= 0 ? "+" + Units.formatEnergy(s.deltaKineticJ()) : Units.formatEnergy(s.deltaKineticJ());
                 System.out.println("  " + String.format("%-4d %-10s %-10s %-10s ", s.number(), Units.formatDistance(s.distanceM()),
-                        Units.formatTime(s.timeS()), Units.formatTime(1000 / s.speedMps())) + (s.deltaKineticJ() > 0 ? style.accent(ke) : style.muted(ke)));
+                        Units.formatDuration(s.timeS()), Units.formatTime(1000 / s.speedMps())) + (s.deltaKineticJ() > 0 ? style.accent(ke) : style.muted(ke)));
             }
         }
         System.out.println();
